@@ -1,0 +1,1909 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SVN Supermarket - Day Book v8.4</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f3f6fa;margin:0;padding:10px;color:#172033}
+.wrap{max-width:1100px;margin:auto}h1{font-size:24px;margin:8px 0 14px}.card{background:#fff;border-radius:16px;padding:16px;margin:10px 0;box-shadow:0 3px 14px #0001}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}.tab{border:0;padding:11px 16px;border-radius:10px;background:#e8edf5;font-weight:700;cursor:pointer}.tab.active{background:#172033;color:#fff}
+.panel{display:none}.panel.active{display:block}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+label{font-size:12px;font-weight:700;display:block;margin-bottom:5px}input,select{width:100%;padding:10px;border:1px solid #ccd4df;border-radius:9px;background:#fff}button{font:inherit;padding:10px 13px;border:0;border-radius:9px;background:#172033;color:#fff;cursor:pointer;font-weight:700}button.secondary{background:#e8edf5;color:#172033}button.danger{background:#b42318}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.small{font-size:12px;color:#667085}.status{padding:9px;background:#eef7ee;border-radius:9px;margin-top:8px}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:9px 8px;border-bottom:1px solid #e5e9ef;text-align:left;font-size:13px}th{background:#f4f6f9}.num{text-align:right}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}.stat{background:#f7f9fc;padding:12px;border-radius:10px}.stat b{display:block;font-size:17px;margin-top:4px}
+.entry-row{display:grid;grid-template-columns:120px 130px 135px 1fr 130px 70px;gap:7px;align-items:end;margin-bottom:8px}
+.full-details{display:none;margin-top:6px;padding:10px;background:#f7f9fc;border-radius:9px}.full-details.show{display:block}.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.detail-item span{display:block;font-size:11px;color:#667085}.detail-item b{font-size:13px}
+@media(max-width:800px){.entry-row{grid-template-columns:1fr 1fr}.entry-row .wide{grid-column:1/-1}}
+
+
+.action-locked{opacity:.45;cursor:not-allowed!important;}
+.action-locked::after{content:" (15m expired)";font-size:11px;}
+@media print{
+  /* By default print nothing. The active print target is enabled by JS. */
+  body *{visibility:hidden !important;}
+  .panel.printing,
+  .panel.printing *{
+    visibility:visible !important;
+  }
+
+  .panel.printing{
+    display:block !important;
+    position:absolute !important;
+    left:0 !important;
+    top:0 !important;
+    width:100% !important;
+    margin:0 !important;
+    padding:0 !important;
+    background:#fff !important;
+    box-shadow:none !important;
+  }
+
+  .panel.printing .no-print,
+  .panel.printing .tabs,
+  .panel.printing .actions,
+  .panel.printing input,
+  .panel.printing select,
+  .panel.printing button{
+    display:none !important;
+  }
+
+  /* Attendance: print only the monthly report card. */
+  #attendance.printing > .card:not(:last-child){
+    display:none !important;
+  }
+  #attendance.printing > .card:last-child{
+    display:block !important;
+    box-shadow:none !important;
+    margin:0 !important;
+  }
+  #attendance.printing > .card:last-child .grid,
+  #attendance.printing > .card:last-child .actions{
+    display:none !important;
+  }
+
+  /* Day Book: print only its dedicated print area. */
+  #ledger.printing #ledgerInteractiveArea{display:none !important;}
+  #ledger.printing #ledgerPrintArea{display:block !important;}
+  #ledger.printing .no-print{display:none !important;}
+
+  /* Other reports: hide controls while printing. */
+  #petty.printing .no-print,
+  #damage.printing .no-print{display:none !important;}
+
+  table{width:100% !important; min-width:0 !important;}
+}
+
+/* v8.20 password login */
+#roleLogin{position:fixed;inset:0;background:#f3f6fa;display:flex;align-items:center;justify-content:center;padding:20px;z-index:99999}
+#roleLogin .login-card{width:min(420px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 8px 30px #0002;text-align:center}
+#roleLogin h2{margin:0 0 8px}.login-sub{color:#667085;font-size:13px;margin-bottom:20px}
+#roleLogin .password-box{display:grid;gap:12px;text-align:left}
+#roleLogin input{font-size:16px;padding:13px}
+#roleLogin button{width:100%;padding:14px}
+#loginMsg{min-height:18px;color:#b42318;font-size:12px;text-align:center}
+#appBar{display:none;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+#currentRole{font-weight:700}
+.role-badge{padding:7px 10px;border-radius:999px;background:#e8edf5;font-size:12px}
+
+</style>
+</head>
+<body>
+
+<div id="roleLogin">
+  <div class="login-card">
+    <h2>SVN Supermarket</h2>
+    <div class="login-sub">Enter your password</div>
+    <form class="password-box" onsubmit="loginWithPassword(event)">
+      <input id="loginPassword" type="password" placeholder="Enter your password" autocomplete="current-password" required autofocus>
+      <button type="submit">Login</button>
+      <div id="loginMsg"></div>
+    </form>
+  </div>
+</div>
+
+<div class="wrap">
+<h1>SVN Supermarket — Day Book</h1>
+
+<div id="appBar" class="card no-print">
+  <span id="currentRole" class="role-badge"></span>
+  <button class="secondary" onclick="logoutUser()">Logout</button>
+</div>
+
+
+<div class="card no-print">
+<strong>Supabase Database</strong>
+<div id="dbStatus" class="status">Connecting...</div>
+</div>
+
+<div class="card no-print">
+<div class="tabs">
+<button class="tab active" onclick="showTab('ledger',this)">View Day Book</button>
+<button class="tab" onclick="showTab('income',this)">Income & Expenses</button>
+<button class="tab" onclick="showTab('petty',this)">Petty Cash</button><button class="tab" onclick="showTab('damage',this)">Damage</button>
+      <button class="tab" onclick="showTab('attendance',this)">Attendance</button>
+</div></div>
+
+<!-- DAY BOOK -->
+
+<div class="card no-print">
+<div class="small"><b>v8 Supabase:</b> All new data is saved directly to Supabase. Day Book is calculated from Income & Expenses; Petty Cash stays separate.</div>
+</div>
+<section id="ledger" class="panel active">
+<div class="card no-print">
+<h2>View Day Book</h2>
+<div class="grid">
+<div><label>From Date</label><input type="date" id="fromDate"></div>
+<div><label>To Date</label><input type="date" id="toDate"></div>
+</div>
+<div class="actions"><button onclick="viewLedger()">View Ledger</button><button class="secondary" onclick="todayLedger()">Today</button><button onclick="printDayBook()">Print Day Book</button></div>
+</div>
+
+<div id="ledgerPrintArea" class="card print-area">
+<h3>Day Book Ledger</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Date</th><th>Particulars / Description</th><th class="num">Income</th><th class="num">Expenses</th><th class="num">Balance</th><th class="no-print">Details</th></tr></thead>
+<tbody id="ledgerBody"></tbody>
+</table></div>
+<div class="summary">
+<div class="stat">Opening Balance<b id="sumOpening">0.00</b></div><div class="stat">Total Income<b id="sumIncome">0.00</b></div>
+<div class="stat">Total Expenses<b id="sumExpense">0.00</b></div><div class="stat">Final Balance<b id="sumFinal">0.00</b></div>
+</div></div>
+
+<div class="card opening-card no-print"><h3>One-Time Opening Balance</h3>
+<div id="openingSetup"><div class="grid"><div><label>Opening Date</label><input type="date" id="openingDate"></div><div><label>Opening Amount</label><input type="number" id="openingAmount" step="0.01"></div></div>
+<div class="actions"><button onclick="saveOpening()">Save Opening Balance</button></div></div>
+<div id="openingSaved" class="status" style="display:none"></div></div>
+</section>
+
+<!-- INCOME EXPENSES -->
+<section id="income" class="panel">
+<div id="incomeAddCard" class="card no-print"><h2>Income & Expenses</h2><div class="small">Enter: Date → Description → Amount → Enter = next row.</div>
+<div id="entryRows" style="margin-top:12px"></div>
+<div class="actions"><button onclick="addIncomeRow()">+ Add Row</button><button onclick="saveIncome()">Save All</button></div></div>
+
+<div id="incomeSavedCard" class="card no-print"><h3>Saved Entries</h3><div class="tablewrap"><table>
+<thead><tr><th>Type</th><th>Type 2</th><th>Date</th><th>Description</th><th class="num">Amount</th><th>Action</th></tr></thead>
+<tbody id="savedBody"></tbody></table></div></div>
+
+<div id="incomeFinalCard" class="card no-print"><h3>Day Book Final Balance</h3><div class="summary">
+<div class="stat">Opening Balance<b id="entryOpening">0.00</b></div><div class="stat">Total Income<b id="entryIncome">0.00</b></div><div class="stat">Total Expenses<b id="entryExpense">0.00</b></div><div class="stat">Final Balance<b id="entryFinal">0.00</b></div>
+</div></div>
+</section>
+
+<!-- PETTY CASH -->
+<section id="petty" class="panel">
+<div id="pettyAddCard" class="card no-print"><h2>Petty Cash</h2><div class="small">Petty Cash expenses are separate. They do NOT come to Day Book.</div>
+<div class="grid" style="margin-top:12px"><div><label>From Date</label><input type="date" id="pettyFrom"></div><div><label>To Date</label><input type="date" id="pettyTo"></div></div>
+<div class="actions"><button onclick="viewPetty()">View Petty Cash Book</button><button class="secondary" onclick="todayPetty()">Today</button><button onclick="printPetty()">Print Petty Cash Book</button></div>
+</div>
+
+<div id="pettyEntryCard" class="card no-print"><h3>Add Petty Cash Expenses</h3><div id="pettyRows"></div>
+<div class="actions"><button onclick="addPettyRow()">+ Add Row</button><button onclick="savePetty()">Save All</button></div></div>
+
+<div id="pettySavedCard" class="card no-print"><h3>Saved Petty Cash Expenses</h3><div class="tablewrap"><table>
+<thead><tr><th>Type</th><th>Date</th><th>Description</th><th class="num">Amount</th><th>Action</th></tr></thead>
+<tbody id="pettySavedBody"></tbody></table></div></div>
+
+<div id="pettyTotalsCard" class="card no-print"><h3>Type-wise Total</h3><div class="tablewrap"><table><thead><tr><th>Type</th><th class="num">Total</th></tr></thead><tbody id="pettyTotalsBody"></tbody></table></div>
+<div class="summary"><div class="stat">Petty Cash Total<b id="pettyGrand">0.00</b></div></div></div>
+
+<div id="pettyPrintArea" class="card print-area" style="display:none"><h2>Petty Cash Book</h2>
+<div id="pettyPrintRange" class="small"></div><div class="tablewrap"><table>
+<thead><tr><th>Date</th><th>Type</th><th>Description</th><th class="num">Amount</th></tr></thead><tbody id="pettyBookBody"></tbody></table></div>
+<div class="summary"><div class="stat">Total Petty Cash<b id="pettyPrintTotal">0.00</b></div></div></div>
+</section>
+<section id="damage" class="panel">
+<div id="damageAddCard" class="card no-print"><h2>Damage</h2>
+<div class="small">Date → Code → Purchase Amount → Return Quantity → Enter = next row. Code uses VLOOKUP-style Item Name. Damage Amount = Purchase Amount × Return Quantity.</div>
+<div class="grid" style="margin-top:12px"><div><label>From Date</label><input type="date" id="damageFrom"></div><div><label>To Date</label><input type="date" id="damageTo"></div></div>
+<div class="actions"><button onclick="viewDamage()">View Damage Book</button><button class="secondary" onclick="todayDamage()">Today</button><button onclick="printDamage()">Print Damage Book</button><button onclick="showDamageMaster()">VLOOKUP Code / Name</button></div></div>
+
+<div id="damageEntryCard" class="card no-print"><h3>Add Damage</h3><div id="damageRows"></div>
+<div class="actions"><button onclick="addDamageRow()">+ Add Row</button><button onclick="saveDamage()">Save All</button></div></div>
+
+<div id="damageMaster" class="card no-print" style="display:none"><h3>VLOOKUP Code / Item Name</h3>
+<div class="grid"><div><label>Item Code</label><input id="masterCode"></div><div><label>Item Name</label><input id="masterName"></div></div>
+<div class="actions"><button onclick="saveDamageMaster()">Save Code / Name</button><button class="secondary" onclick="$('damageMaster').style.display='none'">Close</button></div>
+<div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Code</th><th>Name</th><th>Action</th></tr></thead><tbody id="masterBody"></tbody></table></div></div>
+
+<div id="damageSavedCard" class="card no-print"><h3>Saved Damage Entries</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Code</th><th>Item Name</th><th class="num">Purchase Amount</th><th class="num">Return Qty</th><th class="num">Damage Amount</th><th>Action</th></tr></thead><tbody id="damageSavedBody"></tbody></table></div></div>
+
+<div id="damageReportCard" class="card no-print"><h3>Damage Book — Selected Date Range</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Code</th><th>Item Name</th><th class="num">Purchase Amount</th><th class="num">Return Qty</th><th class="num">Damage Amount</th></tr></thead><tbody id="damageBookBody"></tbody></table></div>
+<div class="summary"><div class="stat">Total Damage<b id="damageGrand">0.00</b></div></div></div>
+
+<div id="damagePrintArea" class="card print-area" style="display:none"><h2>Damage Book</h2><div id="damagePrintRange" class="small"></div>
+<div class="tablewrap"><table><thead><tr><th>Date</th><th>Code</th><th>Item Name</th><th class="num">Purchase Amount</th><th class="num">Return Qty</th><th class="num">Damage Amount</th></tr></thead><tbody id="damagePrintBody"></tbody></table></div>
+<div class="summary"><div class="stat">Total Damage<b id="damagePrintTotal">0.00</b></div></div></div>
+</section>
+
+<section id="attendance" class="panel">
+    <div id="attendanceEntryCard" class="card">
+      <h2>Staff Attendance</h2>
+      <div class="grid">
+        <label>Date<input type="date" id="attDate"></label>
+        <label>Staff Name<select id="attStaff"></select></label>
+        <label>Work In<input type="time" id="attIn"></label>
+        <label>Work Out<input type="time" id="attOut"></label>
+      </div>
+      <div class="actions">
+        <button class="primary" onclick="saveAttendance()">Save Attendance</button>
+        <button onclick="clearAttendanceForm()">Clear</button>
+      </div>
+      <p id="attMsg" class="muted"></p>
+    </div>
+
+    <div id="attendanceStaffCard" class="card">
+      <h2>Add Staff</h2>
+      <div class="grid">
+        <label>Staff Name<input type="text" id="newStaffName" placeholder="Enter staff name"></label>
+        <label>Per Hour Salary<input type="number" id="newHourlySalary" min="0" step="0.01" placeholder="0.00"></label>
+      </div>
+      <div class="actions">
+        <button class="primary" onclick="addStaff()">+ Add Staff</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Staff Name</th><th>Per Hour Salary</th><th>Action</th></tr></thead>
+          <tbody id="staffBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="attendanceReportCard" class="card">
+      <h2>Attendance Book</h2>
+      <div class="grid">
+        <label>Month<input type="month" id="attMonth"></label>
+        <label>Staff
+          <select id="reportStaff">
+            <option value="">All Staff</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="primary" onclick="viewAttendanceReport()">View Monthly Report</button>
+        <button onclick="printAttendance()">Print Report</button>
+      </div>
+      <div id="attendanceSummary" class="stats"></div>
+      <div class="table-wrap">
+        <table id="attendanceReportTable">
+          <thead><tr><th>Date</th><th>Staff Name</th><th>Work In</th><th>Work Out</th><th>Change</th></tr></thead>
+          <tbody id="attendanceReportBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+
+</div>
+
+<script>
+// =========================================================
+// SVN SUPERMARKET DAY BOOK v8
+// SUPABASE SOURCE OF TRUTH
+// =========================================================
+
+const SUPABASE_URL = 'https://dqshgicsexmnmhojvezr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_E5g2qeg8BFR2Q1SyzSgbTA_oTBxIsxh';
+
+let supabaseClient = null;
+let DB_READY = false;
+
+let DB = {
+  entries: [],
+  opening: null,
+  petty: [],
+  damage: [],
+  master: [],
+    staff: [],
+    attendance: []
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[m]));
+const money = n => Number(n || 0).toLocaleString(undefined,{
+  minimumFractionDigits:2, maximumFractionDigits:2
+});
+const today = () => new Date().toISOString().slice(0,10);
+
+function setDbStatus(text, ok=false){
+  const el = $('dbStatus');
+  if(el){
+    el.textContent = text;
+    el.style.background = ok ? '#eef7ee' : '#fff4e5';
+  }
+}
+
+function showBusy(text='Working...'){
+  setDbStatus(text, false);
+}
+
+function handleDbError(label, error){
+  console.error(label, error);
+  setDbStatus(label + ': ' + (error?.message || 'Unknown database error'));
+  alert(label + '\n' + (error?.message || 'Unknown database error'));
+}
+
+async function initSupabase(){
+  try{
+    if(!window.supabase){
+      setDbStatus('Supabase library could not load.');
+      return false;
+    }
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const tableNames = ['income_expenses','opening_balance','petty_cash','damage_book','damage_items'];
+    const checks = await Promise.all(tableNames.map(async name => {
+      const result = await supabaseClient.from(name).select('*').limit(1);
+      return {name, ...result};
+    }));
+
+    const bad = checks.find(x => x.error);
+    if(bad){
+      setDbStatus('API table error: ' + bad.name + ' — ' + bad.error.message);
+      console.error('Supabase table check:', bad);
+      return false;
+    }
+
+    DB_READY = true;
+    setDbStatus('Supabase connected ✓  Database tables ready ✓', true);
+    return true;
+  }catch(e){
+    setDbStatus('Supabase connection error: ' + e.message);
+    return false;
+  }
+}
+
+async function loadAll(){
+  if(!DB_READY) return false;
+  showBusy('Loading data from Supabase...');
+
+  const results = await Promise.all([
+    supabaseClient.from('income_expenses').select('*').order('entry_date',{ascending:true}).order('id',{ascending:true}),
+    supabaseClient.from('opening_balance').select('*').order('id',{ascending:true}),
+    supabaseClient.from('petty_cash').select('*').order('entry_date',{ascending:true}).order('id',{ascending:true}),
+    supabaseClient.from('damage_book').select('*').order('entry_date',{ascending:true}).order('id',{ascending:true}),
+    supabaseClient.from('damage_items').select('*').order('item_code',{ascending:true})
+  ]);
+
+  const err = results.find(r => r.error);
+  if(err){
+    setDbStatus('Database read error: ' + err.error.message);
+    return false;
+  }
+
+  DB.entries = (results[0].data || []).map(e => ({
+    id:e.id, type:e.entry_type, subtype:e.entry_subtype,
+    date:e.entry_date, description:e.description || '', amount:Number(e.amount), created_at:e.created_at
+  }));
+
+  const opens = results[1].data || [];
+  DB.opening = opens.length ? {
+    id:opens[0].id, date:opens[0].opening_date, amount:Number(opens[0].amount)
+  } : null;
+
+  DB.petty = (results[2].data || []).map(e => ({
+    id:e.id, type:e.expense_type, date:e.entry_date,
+    description:e.description || '', amount:Number(e.amount), created_at:e.created_at
+  }));
+
+  DB.damage = (results[3].data || []).map(e => ({
+    id:e.id, date:e.entry_date, code:e.item_code, name:e.item_name,
+    purchase:Number(e.purchase_amount), qty:Number(e.return_quantity),
+    amount:Number(e.damage_amount), created_at:e.created_at
+  }));
+
+  DB.master = (results[4].data || []).map(e => ({
+    id:e.id, code:e.item_code, name:e.item_name
+  }));
+
+  setDbStatus('Supabase connected ✓  Data loaded ✓', true);
+  updateOpening();
+  return true;
+}
+
+// ---------- Tabs ----------
+function showTab(id,btn){
+  if(id==='ledger' && !isMainUser()){ alert('View Day Book is available only for Main User.'); return; }
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active','printing'));
+  $(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+
+  if(id==='income'){
+    renderIncome(); renderFinal();
+  }
+  if(id==='petty'){
+    renderPettySaved(); renderPettyTotals(); viewPetty(); applyRolePermissions();
+  }
+  if(id==='attendance'){ initAttendanceUI(); renderStaff(); renderAttendanceReport(); applyRolePermissions(); }
+    if(id==='damage'){
+    renderDamageSaved(); renderDamageMaster(); viewDamage(); applyRolePermissions();
+  }
+  if(id==='ledger') viewLedger();
+}
+
+// ---------- Opening Balance ----------
+function opening(){ return DB.opening; }
+
+async function saveOpening(){
+  if(!DB_READY){ alert('Supabase is not ready.'); return; }
+  if(opening()){
+    alert('Opening Balance already entered. It can be entered only once.');
+    return;
+  }
+
+  const d = $('openingDate').value;
+  const a = Number($('openingAmount').value);
+
+  if(!d || !Number.isFinite(a)){
+    alert('Opening Date and Amount are required.');
+    return;
+  }
+
+  showBusy('Saving Opening Balance...');
+  const {data,error} = await supabaseClient
+    .from('opening_balance')
+    .insert({
+      opening_date:d,
+      amount:a
+    })
+    .select()
+    .single();
+
+  if(error){
+    handleDbError('Opening Balance save failed',error);
+    return;
+  }
+
+  DB.opening = {
+    id:data.id, date:data.opening_date, amount:Number(data.amount)
+  };
+
+  setDbStatus('Opening Balance saved ✓',true);
+  updateOpening();
+  viewLedger();
+  renderFinal();
+  alert('Opening Balance saved successfully.');
+}
+
+function updateOpening(){
+  const o = opening();
+  if(o){
+    $('openingSetup').style.display='none';
+    $('openingSaved').style.display='block';
+    $('openingSaved').textContent =
+      'Opening Balance saved: ' + o.date + ' — ' + money(o.amount);
+  }else{
+    $('openingSetup').style.display='block';
+    $('openingSaved').style.display='none';
+  }
+}
+
+// ---------- Day Book ----------
+function balanceBefore(date){
+  const o = opening();
+  if(!o) return 0;
+
+  let b = Number(o.amount);
+
+  DB.entries
+    .filter(e => e.date >= o.date && e.date < date)
+    .sort((a,b)=>a.date.localeCompare(b.date)||Number(a.id)-Number(b.id))
+    .forEach(e => {
+      b += e.type === 'Income' ? Number(e.amount) : -Number(e.amount);
+    });
+
+  return b;
+}
+
+function viewLedger(){
+  const f = $('fromDate')?.value || '';
+  const t = $('toDate')?.value || '';
+
+  if(!f || !t){
+    alert('Please select From Date and To Date.');
+    return false;
+  }
+
+  if(f > t){
+    alert('From Date cannot be after To Date.');
+    return false;
+  }
+
+  let balance = balanceBefore(f);
+  const openingForRange = balance;
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  const list = DB.entries
+    .filter(e => e.date >= f && e.date <= t)
+    .sort((a,b) =>
+      String(a.date).localeCompare(String(b.date)) ||
+      Number(a.id) - Number(b.id)
+    );
+
+  const body = $('ledgerBody');
+
+  if(!list.length){
+    body.innerHTML = '<tr><td colspan="6">No entries found for selected dates.</td></tr>';
+  } else {
+    body.innerHTML = list.map(e => {
+      const income = e.type === 'Income' ? Number(e.amount) : 0;
+      const expense = e.type === 'Expenses' ? Number(e.amount) : 0;
+
+      balance += income - expense;
+      totalIncome += income;
+      totalExpense += expense;
+
+      return `<tr>
+        <td>${esc(e.date)}</td>
+        <td>${esc(e.description || '')}</td>
+        <td class="num">${income ? money(income) : ''}</td>
+        <td class="num">${expense ? money(expense) : ''}</td>
+        <td class="num">${money(balance)}</td>
+        <td class="no-print">
+          <button class="secondary" onclick="details('${e.id}',this)">View Full Details</button>
+          <div id="d${e.id}" class="full-details">
+            <div class="detail-grid">
+              <div class="detail-item"><span>Type</span><b>${esc(e.type)}</b></div>
+              <div class="detail-item"><span>Type 2</span><b>${esc(e.subtype)}</b></div>
+              <div class="detail-item"><span>Date</span><b>${esc(e.date)}</b></div>
+              <div class="detail-item"><span>Description</span><b>${esc(e.description || '')}</b></div>
+              <div class="detail-item"><span>Amount</span><b>${money(e.amount)}</b></div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  if($('sumOpening')) $('sumOpening').textContent = money(openingForRange);
+  if($('sumIncome')) $('sumIncome').textContent = money(totalIncome);
+  if($('sumExpense')) $('sumExpense').textContent = money(totalExpense);
+  if($('sumFinal')) $('sumFinal').textContent = money(balance);
+
+  // Keep a dedicated print copy so print never depends on a hidden/interactive row.
+  const printBody = $('ledgerPrintBody');
+  if(printBody){
+    printBody.innerHTML = body.innerHTML.replace(/<td class="no-print">[\s\S]*?<\/td>/g,'');
+  }
+
+  const pr = $('ledgerPrintRange');
+  if(pr) pr.textContent = `From ${f} To ${t}`;
+
+  return true;
+}
+
+function todayLedger(){
+  const d = today();
+  $('fromDate').value = d;
+  $('toDate').value = d;
+  viewLedger();
+}
+
+function printDayBook(){
+  if(!isMainUser()){alert('Sub User does not have access to Day Book print.');return;}
+  if(!viewLedger()) return;
+
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('printing'));
+  const panel = $('ledger');
+  if(!panel) return;
+
+  // Mark the selected range explicitly for print.
+  panel.setAttribute('data-print-from', $('fromDate').value);
+  panel.setAttribute('data-print-to', $('toDate').value);
+
+  // Let the browser finish rendering the latest ledger before opening print.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      panel.classList.add('printing');
+      window.print();
+      setTimeout(() => panel.classList.remove('printing'), 300);
+    });
+  });
+}
+
+// ---------- Income & Expenses ----------
+function subOptions(t){
+  return t==='Income'
+    ? ['Sales','Excess','Others']
+    : ['Purchase','POS','Deposit','Others'];
+}
+
+function addIncomeRow(data={}){
+  // New rows automatically carry forward Type, Type 2 and Date
+  // from the immediately previous row unless explicit data is supplied.
+  const prevRows = document.querySelectorAll('#entryRows .entry-row');
+  const prev = prevRows.length ? prevRows[prevRows.length - 1] : null;
+
+  if(prev && Object.keys(data).length === 0){
+    data = {
+      type: prev.querySelector('.rtype')?.value || 'Income',
+      subtype: prev.querySelector('.rsub')?.value || 'Sales',
+      date: prev.querySelector('.rdate')?.value || today(),
+      description: '',
+      amount: ''
+    };
+  }
+
+  const r=document.createElement('div');
+  r.className='entry-row';
+  r.innerHTML=`<div><label>Type</label>
+    <select class="rtype"><option>Income</option><option>Expenses</option></select></div>
+    <div><label>Type 2</label><select class="rsub"></select></div>
+    <div><label>Date</label><input class="rdate" type="date"></div>
+    <div class="wide"><label>Description</label><input class="rdesc"></div>
+    <div><label>Amount</label><input class="ramt" type="number" step="0.01"></div>
+    <div><button class="danger" onclick="this.closest('.entry-row').remove()">Delete</button></div>`;
+
+  $('entryRows').appendChild(r);
+
+  const type=r.querySelector('.rtype');
+  const sub=r.querySelector('.rsub');
+
+  type.value=data.type||'Income';
+  sub.innerHTML=subOptions(type.value).map(x=>`<option>${x}</option>`).join('');
+  sub.value=data.subtype||sub.options[0].value;
+
+  r.querySelector('.rdate').value=data.date||today();
+  r.querySelector('.rdesc').value=data.description||'';
+  r.querySelector('.ramt').value=data.amount??'';
+
+  type.onchange=()=>{
+    sub.innerHTML=subOptions(type.value).map(x=>`<option>${x}</option>`).join('');
+  };
+
+  const d=r.querySelector('.rdate'), x=r.querySelector('.rdesc'), a=r.querySelector('.ramt');
+  d.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();x.focus()}};
+  x.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();a.focus()}};
+  a.onkeydown=e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const n=addIncomeRow();
+      n.querySelector('.rdate').focus();
+    }
+  };
+
+  return r;
+}
+
+async function saveIncome(){
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  const rows=[...document.querySelectorAll('#entryRows .entry-row')];
+  const add=[];
+
+  for(const r of rows){
+    const date=r.querySelector('.rdate').value;
+    const type=r.querySelector('.rtype').value;
+    const subtype=r.querySelector('.rsub').value;
+    const description=r.querySelector('.rdesc').value.trim();
+    const amount=Number(r.querySelector('.ramt').value);
+
+    if(!date || !Number.isFinite(amount) || amount<0){
+      alert('Every row needs a valid Date and Amount.');
+      return;
+    }
+
+    add.push({
+      entry_date:date,
+      entry_type:type,
+      entry_subtype:subtype,
+      description,
+      amount
+    });
+  }
+
+  if(!add.length){
+    addIncomeRow();
+    return;
+  }
+
+  showBusy('Saving Income & Expenses...');
+  const {data,error}=await supabaseClient
+    .from('income_expenses')
+    .insert(add)
+    .select();
+
+  if(error){
+    handleDbError('Income & Expenses save failed',error);
+    return;
+  }
+
+  (data||[]).forEach(e=>{
+    DB.entries.push({
+      id:e.id,type:e.entry_type,subtype:e.entry_subtype,
+      date:e.entry_date,description:e.description||'',amount:Number(e.amount),created_at:e.created_at
+    });
+  });
+
+  $('entryRows').innerHTML='';
+  addIncomeRow();
+  renderIncome();
+  renderFinal();
+  viewLedger();
+  setDbStatus('Income & Expenses saved ✓',true);
+  alert(add.length+' record(s) saved to Supabase.');
+}
+
+function isWithin15Minutes(createdAt){
+  if(!createdAt) return false;
+  const t=new Date(createdAt).getTime();
+  return Number.isFinite(t) && (Date.now()-t) >= 0 && (Date.now()-t) <= 15*60*1000;
+}
+function actionButton(label, fn, e, cls='secondary'){
+  const ok = isMainUser() || isWithin15Minutes(e.created_at);
+  const text = isMainUser() ? label : (label + ' (15m)');
+  return `<button class="${cls}${ok?'':' action-locked'}" ${ok?`onclick="${fn}('${e.id}')"`:'disabled'}>${text}</button>`;
+}
+
+function renderIncome(){
+  const l=[...DB.entries].sort((a,b)=>
+    b.date.localeCompare(a.date)||Number(b.id)-Number(a.id));
+
+  $('savedBody').innerHTML=l.length ? l.map(e=>`<tr>
+    <td>${esc(e.type)}</td>
+    <td>${esc(e.subtype)}</td>
+    <td>${esc(e.date)}</td>
+    <td>${esc(e.description||'')}</td>
+    <td class="num">${money(e.amount)}</td>
+    <td>
+      ${actionButton('Modify','editIncome',e,'secondary')}
+      ${actionButton('Delete','delIncome',e,'danger')}
+    </td>
+  </tr>`).join('') :
+  '<tr><td colspan="6">No saved entries.</td></tr>';
+}
+
+async function editIncome(id){
+  if(!isMainUser() && !isWithin15Minutes(DB.entries.find(x=>String(x.id)===String(id))?.created_at)){ alert('Only within 15 minutes is allowed for Sub User.'); renderIncome(); return; }
+  const e = DB.entries.find(x => String(x.id) === String(id));
+  if(!e) return;
+
+  const type = prompt('Type (Income / Expenses):', e.type);
+  if(type === null) return;
+  if(type !== 'Income' && type !== 'Expenses'){
+    alert('Type must be Income or Expenses.');
+    return;
+  }
+
+  const opts = subOptions(type);
+  const subtype = prompt('Type 2 (' + opts.join(' / ') + '):', e.subtype);
+  if(subtype === null) return;
+  if(!opts.includes(subtype)){
+    alert('Invalid Type 2. Use: ' + opts.join(', '));
+    return;
+  }
+
+  const date = prompt('Date (YYYY-MM-DD):', e.date);
+  if(date === null) return;
+  const description = prompt('Description:', e.description || '');
+  if(description === null) return;
+  const amountText = prompt('Amount:', String(e.amount));
+  if(amountText === null) return;
+  const amount = Number(amountText);
+
+  if(!date || !Number.isFinite(amount) || amount < 0){
+    alert('Invalid Date or Amount.');
+    return;
+  }
+
+  if(!confirm('Save these changes?')) return;
+  showBusy('Modifying Income & Expenses...');
+
+  const {data,error} = await supabaseClient
+    .from('income_expenses')
+    .update({
+      entry_date: date,
+      entry_type: type,
+      entry_subtype: subtype,
+      description: description.trim(),
+      amount
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if(error){
+    handleDbError('Modify failed', error);
+    return;
+  }
+
+  Object.assign(e, {
+    type:data.entry_type,
+    subtype:data.entry_subtype,
+    date:data.entry_date,
+    description:data.description || '',
+    amount:Number(data.amount)
+  });
+
+  renderIncome();
+  renderFinal();
+  viewLedger();
+  setDbStatus('Income & Expenses modified ✓', true);
+}
+
+async function delIncome(id){
+  if(!confirm('Delete this Income/Expense entry?')) return;
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  showBusy('Deleting entry...');
+  const {error}=await supabaseClient
+    .from('income_expenses').delete().eq('id',id);
+
+  if(error){
+    handleDbError('Delete failed',error);
+    return;
+  }
+
+  DB.entries=DB.entries.filter(e=>String(e.id)!==String(id));
+  renderIncome();renderFinal();viewLedger();
+  setDbStatus('Entry deleted ✓',true);
+}
+
+function renderFinal(){
+  const o=opening();
+  const ob=o ? Number(o.amount) : 0;
+  const i=DB.entries
+    .filter(e=>e.type==='Income')
+    .reduce((s,e)=>s+Number(e.amount),0);
+  const x=DB.entries
+    .filter(e=>e.type==='Expenses')
+    .reduce((s,e)=>s+Number(e.amount),0);
+
+  $('entryOpening').textContent=money(ob);
+  $('entryIncome').textContent=money(i);
+  $('entryExpense').textContent=money(x);
+  $('entryFinal').textContent=money(ob+i-x);
+}
+
+// ---------- Petty Cash ----------
+function addPettyRow(data={}){
+  const r=document.createElement('div');
+  r.className='entry-row';
+  r.innerHTML=`<div><label>Type</label>
+    <select class="ptype">
+      <option>Paper-related expenses</option>
+      <option>Miscellaneous expenses</option>
+    </select></div>
+    <div><label>Date</label><input class="pdate" type="date"></div>
+    <div class="wide"><label>Description</label><input class="pdesc"></div>
+    <div><label>Amount</label><input class="pamt" type="number" step="0.01"></div>
+    <div><button class="danger" onclick="this.closest('.entry-row').remove()">Delete</button></div>`;
+
+  $('pettyRows').appendChild(r);
+
+  r.querySelector('.ptype').value=data.type||'Paper-related expenses';
+  r.querySelector('.pdate').value=data.date||today();
+  r.querySelector('.pdesc').value=data.description||'';
+  r.querySelector('.pamt').value=data.amount??'';
+
+  const d=r.querySelector('.pdate'),x=r.querySelector('.pdesc'),a=r.querySelector('.pamt');
+  d.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();x.focus()}};
+  x.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();a.focus()}};
+  a.onkeydown=e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const n=addPettyRow();
+      n.querySelector('.pdate').focus();
+    }
+  };
+
+  return r;
+}
+
+async function savePetty(){
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  const rows=[...document.querySelectorAll('#pettyRows .entry-row')];
+  const add=[];
+
+  for(const r of rows){
+    const date=r.querySelector('.pdate').value;
+    const type=r.querySelector('.ptype').value;
+    const description=r.querySelector('.pdesc').value.trim();
+    const amount=Number(r.querySelector('.pamt').value);
+
+    if(!date || !Number.isFinite(amount) || amount<0){
+      alert('Every Petty Cash row needs a valid Date and Amount.');
+      return;
+    }
+
+    add.push({
+      entry_date:date,
+      expense_type:type,
+      description,
+      amount
+    });
+  }
+
+  if(!add.length){
+    addPettyRow();
+    return;
+  }
+
+  showBusy('Saving Petty Cash...');
+  const {data,error}=await supabaseClient
+    .from('petty_cash').insert(add).select();
+
+  if(error){
+    handleDbError('Petty Cash save failed',error);
+    return;
+  }
+
+  (data||[]).forEach(e=>{
+    DB.petty.push({
+      id:e.id,type:e.expense_type,date:e.entry_date,
+      description:e.description||'',amount:Number(e.amount)
+    });
+  });
+
+  $('pettyRows').innerHTML='';
+  addPettyRow();
+  renderPettySaved();renderPettyTotals();viewPetty();
+  setDbStatus('Petty Cash saved ✓',true);
+  alert(add.length+' Petty Cash record(s) saved to Supabase.');
+}
+
+function renderPettySaved(){
+  const l=[...DB.petty].sort((a,b)=>
+    b.date.localeCompare(a.date)||Number(b.id)-Number(a.id));
+
+  $('pettySavedBody').innerHTML=l.length ? l.map(e=>`<tr>
+    <td>${esc(e.type)}</td><td>${esc(e.date)}</td>
+    <td>${esc(e.description||'')}</td>
+    <td class="num">${money(e.amount)}</td>
+    <td>
+      ${actionButton('Modify','editPetty',e,'secondary')}
+      ${actionButton('Delete','delPetty',e,'danger')}
+    </td>
+  </tr>`).join('') :
+  '<tr><td colspan="5">No Petty Cash expenses.</td></tr>';
+}
+
+async function editPetty(id){
+  const e = DB.petty.find(x => String(x.id) === String(id));
+  if(!e) return;
+
+  const types = ['Paper-related expenses','Miscellaneous expenses'];
+  const type = prompt('Type (' + types.join(' / ') + '):', e.type);
+  if(type === null) return;
+  if(!types.includes(type)){
+    alert('Invalid Petty Cash type.');
+    return;
+  }
+
+  const date = prompt('Date (YYYY-MM-DD):', e.date);
+  if(date === null) return;
+  const description = prompt('Description:', e.description || '');
+  if(description === null) return;
+  const amountText = prompt('Amount:', String(e.amount));
+  if(amountText === null) return;
+  const amount = Number(amountText);
+
+  if(!date || !Number.isFinite(amount) || amount < 0){
+    alert('Invalid Date or Amount.');
+    return;
+  }
+
+  if(!confirm('Save these changes?')) return;
+  showBusy('Modifying Petty Cash...');
+
+  const {data,error} = await supabaseClient
+    .from('petty_cash')
+    .update({
+      entry_date:date,
+      expense_type:type,
+      description:description.trim(),
+      amount
+    })
+    .eq('id',id)
+    .select()
+    .single();
+
+  if(error){
+    handleDbError('Petty Cash modify failed',error);
+    return;
+  }
+
+  Object.assign(e,{
+    type:data.expense_type,
+    date:data.entry_date,
+    description:data.description || '',
+    amount:Number(data.amount)
+  });
+
+  renderPettySaved();
+  renderPettyTotals();
+  viewPetty();
+  setDbStatus('Petty Cash modified ✓',true);
+}
+
+async function delPetty(id){
+  if(!confirm('Delete this Petty Cash entry?')) return;
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  showBusy('Deleting Petty Cash entry...');
+  const {error}=await supabaseClient.from('petty_cash').delete().eq('id',id);
+
+  if(error){
+    handleDbError('Petty Cash delete failed',error);
+    return;
+  }
+
+  DB.petty=DB.petty.filter(e=>String(e.id)!==String(id));
+  renderPettySaved();renderPettyTotals();viewPetty();
+  setDbStatus('Petty Cash entry deleted ✓',true);
+}
+
+function renderPettyTotals(){
+  const t={};
+  DB.petty.forEach(e=>t[e.type]=(t[e.type]||0)+Number(e.amount));
+
+  $('pettyTotalsBody').innerHTML=Object.keys(t).map(k=>
+    `<tr><td>${esc(k)}</td><td class="num">${money(t[k])}</td></tr>`
+  ).join('') || '<tr><td colspan="2">No totals.</td></tr>';
+
+  $('pettyGrand').textContent=money(
+    Object.values(t).reduce((a,b)=>a+b,0)
+  );
+}
+
+function pettyRange(){
+  const f=$('pettyFrom').value,t=$('pettyTo').value;
+  if(!f||!t){
+    alert('Select Petty Cash From Date and To Date.');
+    return null;
+  }
+  if(f>t){
+    alert('From Date cannot be after To Date.');
+    return null;
+  }
+  return DB.petty
+    .filter(e=>e.date>=f&&e.date<=t)
+    .sort((a,b)=>a.date.localeCompare(b.date)||Number(a.id)-Number(b.id));
+}
+
+function viewPetty(){
+  const l=pettyRange();
+  if(!l)return;
+
+  let total=0;
+  $('pettyBookBody').innerHTML=l.length ? l.map(e=>{
+    total+=Number(e.amount);
+    return `<tr>
+      <td>${esc(e.date)}</td><td>${esc(e.type)}</td>
+      <td>${esc(e.description||'')}</td>
+      <td class="num">${money(e.amount)}</td>
+    </tr>`;
+  }).join('') :
+  '<tr><td colspan="4">No Petty Cash expenses for selected dates.</td></tr>';
+
+  $('pettyPrintTotal').textContent=money(total);
+  $('pettyPrintRange').textContent='From '+$('pettyFrom').value+' To '+$('pettyTo').value;
+  $('pettyPrintArea').style.display='block';
+}
+
+function todayPetty(){
+  const d=today();
+  $('pettyFrom').value=d;
+  $('pettyTo').value=d;
+  viewPetty();
+}
+
+function printPetty(){
+  if(!isMainUser()){alert('Sub User does not have access to Petty Cash Book print.');return;}
+  if(!isMainUser()) { alert('Sub User does not have access to this report.'); return; }
+  viewPetty();
+  $('petty').classList.add('printing');
+  window.print();
+  setTimeout(()=>$('petty').classList.remove('printing'),100);
+}
+
+// ---------- Damage ----------
+function showDamageMaster(){
+  $('damageMaster').style.display='block';
+  renderDamageMaster();
+  $('masterCode').focus();
+}
+
+function renderDamageMaster(){
+  const l=[...DB.master].sort((a,b)=>
+    String(a.code).localeCompare(String(b.code),undefined,{numeric:true}));
+
+  $('masterBody').innerHTML=l.length ? l.map(x=>`<tr>
+    <td>${esc(x.code)}</td><td>${esc(x.name)}</td>
+    <td>
+      ${actionButton('Modify','editDamageMaster',x,'secondary')}
+      ${actionButton('Delete','deleteDamageMaster',x,'danger')}
+    </td>
+  </tr>`).join('') :
+  '<tr><td colspan="3">No codes saved.</td></tr>';
+}
+
+async function saveDamageMaster(){
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  const code=$('masterCode').value.trim();
+  const name=$('masterName').value.trim();
+
+  if(!code||!name){
+    alert('Code and Name are required.');
+    return;
+  }
+
+  showBusy('Saving VLOOKUP Code / Name...');
+
+  const {data,error}=await supabaseClient
+    .from('damage_items')
+    .upsert(
+      {item_code:code,item_name:name},
+      {onConflict:'item_code'}
+    )
+    .select()
+    .single();
+
+  if(error){
+    handleDbError('VLOOKUP Code / Name save failed',error);
+    return;
+  }
+
+  const obj={id:data.id,code:data.item_code,name:data.item_name};
+  const idx=DB.master.findIndex(x=>String(x.code).toLowerCase()===code.toLowerCase());
+
+  if(idx>=0) DB.master[idx]=obj;
+  else DB.master.push(obj);
+
+  $('masterCode').value='';
+  $('masterName').value='';
+  renderDamageMaster();
+
+  // Refresh visible lookup names in unsaved rows.
+  document.querySelectorAll('#damageRows .damage-row').forEach(r=>{
+    const c=r.querySelector('.dcode').value.trim();
+    const m=lookupDamage(c);
+    r.querySelector('.dname').value=m?m.name:'';
+  });
+
+  setDbStatus('VLOOKUP Code / Name saved ✓',true);
+  alert('Code / Name saved to Supabase.');
+}
+
+async function editDamageMaster(id){
+  const x = DB.master.find(v => String(v.id) === String(id));
+  if(!x) return;
+
+  const code = prompt('Item Code:', x.code);
+  if(code === null) return;
+  const name = prompt('Item Name:', x.name);
+  if(name === null) return;
+
+  if(!code.trim() || !name.trim()){
+    alert('Code and Name are required.');
+    return;
+  }
+
+  if(!confirm('Save VLOOKUP changes?')) return;
+  showBusy('Modifying VLOOKUP item...');
+
+  const {data,error} = await supabaseClient
+    .from('damage_items')
+    .update({
+      item_code:code.trim(),
+      item_name:name.trim()
+    })
+    .eq('id',id)
+    .select()
+    .single();
+
+  if(error){
+    handleDbError('VLOOKUP modify failed',error);
+    return;
+  }
+
+  Object.assign(x,{
+    code:data.item_code,
+    name:data.item_name
+  });
+
+  renderDamageMaster();
+  renderDamageSaved();
+  document.querySelectorAll('#damageRows .damage-row').forEach(r=>{
+    const c=r.querySelector('.dcode').value.trim();
+    const m=lookupDamage(c);
+    r.querySelector('.dname').value=m ? m.name : '';
+  });
+
+  setDbStatus('VLOOKUP item modified ✓',true);
+}
+
+async function deleteDamageMaster(id){
+  if(!confirm('Delete this VLOOKUP Code / Name?')) return;
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  showBusy('Deleting VLOOKUP item...');
+  const {error}=await supabaseClient.from('damage_items').delete().eq('id',id);
+
+  if(error){
+    handleDbError('VLOOKUP delete failed',error);
+    return;
+  }
+
+  DB.master=DB.master.filter(x=>String(x.id)!==String(id));
+  renderDamageMaster();
+  setDbStatus('VLOOKUP item deleted ✓',true);
+}
+
+function lookupDamage(code){
+  return DB.master.find(x=>
+    String(x.code).toLowerCase()===String(code).trim().toLowerCase()
+  );
+}
+
+function addDamageRow(data={}){
+  const r=document.createElement('div');
+  r.className='damage-row';
+  r.innerHTML=`<div><label>Date</label><input class="ddate" type="date"></div>
+    <div><label>Item Code</label><input class="dcode"></div>
+    <div class="wide"><label>Item Name</label><input class="dname" readonly></div>
+    <div><label>Purchase Amount</label><input class="dpurchase" type="number" step="0.01"></div>
+    <div><label>Return Quantity</label><input class="dqty" type="number" step="0.001" min="0"></div>
+    <div><label>Damage Amount</label><input class="damount" type="number" readonly></div>
+    <div><button class="danger" onclick="this.closest('.damage-row').remove()">Delete</button></div>`;
+
+  $('damageRows').appendChild(r);
+
+  const d=r.querySelector('.ddate'),c=r.querySelector('.dcode'),
+        n=r.querySelector('.dname'),p=r.querySelector('.dpurchase'),
+        q=r.querySelector('.dqty'),a=r.querySelector('.damount');
+
+  d.value=data.date||today();
+  c.value=data.code||'';
+  n.value=data.name||'';
+  p.value=data.purchase??'';
+  q.value=data.qty??'';
+  a.value=data.amount??'';
+
+  const lookup=()=>{
+    const x=lookupDamage(c.value);
+    n.value=x ? x.name : (c.value ? 'Code not found' : '');
+  };
+
+  const calc=()=>{
+    const pv=Number(p.value), qv=Number(q.value);
+    a.value=(Number.isFinite(pv)&&Number.isFinite(qv)) ?
+      (pv*qv).toFixed(2) : '';
+  };
+
+  c.oninput=lookup;
+  c.onblur=lookup;
+  p.oninput=calc;
+  q.oninput=calc;
+
+  d.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();c.focus()}};
+  c.onkeydown=e=>{
+    if(e.key==='Enter'){e.preventDefault();lookup();p.focus()}
+  };
+  p.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();q.focus()}};
+  q.onkeydown=e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      calc();
+      const x=addDamageRow();
+      x.querySelector('.ddate').focus();
+    }
+  };
+
+  if(data.code) lookup();
+  calc();
+  return r;
+}
+
+async function saveDamage(){
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  const rows=[...document.querySelectorAll('#damageRows .damage-row')];
+  const add=[];
+
+  for(const r of rows){
+    const date=r.querySelector('.ddate').value;
+    const code=r.querySelector('.dcode').value.trim();
+    const m=lookupDamage(code);
+    const purchase=Number(r.querySelector('.dpurchase').value);
+    const qty=Number(r.querySelector('.dqty').value);
+
+    if(!date || !code || !m ||
+       !Number.isFinite(purchase) || !Number.isFinite(qty) ||
+       purchase<0 || qty<0){
+      alert('Date, valid Code, Purchase Amount and Return Quantity are required.');
+      return;
+    }
+
+    add.push({
+      entry_date:date,
+      item_code:code,
+      item_name:m.name,
+      purchase_amount:purchase,
+      return_quantity:qty
+    });
+  }
+
+  if(!add.length){
+    addDamageRow();
+    return;
+  }
+
+  showBusy('Saving Damage entries...');
+  const {data,error}=await supabaseClient
+    .from('damage_book')
+    .insert(add)
+    .select();
+
+  if(error){
+    handleDbError('Damage save failed',error);
+    return;
+  }
+
+  (data||[]).forEach(e=>{
+    DB.damage.push({
+      id:e.id,date:e.entry_date,code:e.item_code,name:e.item_name,
+      purchase:Number(e.purchase_amount),qty:Number(e.return_quantity),
+      amount:Number(e.damage_amount),created_at:e.created_at
+    });
+  });
+
+  $('damageRows').innerHTML='';
+  addDamageRow();
+  renderDamageSaved();
+  viewDamage();
+  setDbStatus('Damage entries saved ✓',true);
+  alert(add.length+' Damage record(s) saved to Supabase.');
+}
+
+function renderDamageSaved(){
+  const l=[...DB.damage].sort((a,b)=>
+    b.date.localeCompare(a.date)||Number(b.id)-Number(a.id));
+
+  $('damageSavedBody').innerHTML=l.length ? l.map(e=>`<tr>
+    <td>${esc(e.date)}</td><td>${esc(e.code)}</td><td>${esc(e.name)}</td>
+    <td class="num">${money(e.purchase)}</td>
+    <td class="num">${money(e.qty)}</td>
+    <td class="num">${money(e.amount)}</td>
+    <td>
+      ${actionButton('Modify','editDamage',e,'secondary')}
+      ${actionButton('Delete','deleteDamage',e,'danger')}
+    </td>
+  </tr>`).join('') :
+  '<tr><td colspan="7">No Damage entries.</td></tr>';
+}
+
+async function editDamage(id){
+  const e = DB.damage.find(x => String(x.id) === String(id));
+  if(!e) return;
+
+  const date = prompt('Date (YYYY-MM-DD):', e.date);
+  if(date === null) return;
+  const code = prompt('Item Code:', e.code);
+  if(code === null) return;
+
+  const m = lookupDamage(code);
+  if(!m){
+    alert('Item Code not found in VLOOKUP list.');
+    return;
+  }
+
+  const purchaseText = prompt('Purchase Amount:', String(e.purchase));
+  if(purchaseText === null) return;
+  const qtyText = prompt('Return Quantity:', String(e.qty));
+  if(qtyText === null) return;
+
+  const purchase = Number(purchaseText);
+  const qty = Number(qtyText);
+
+  if(!date || !Number.isFinite(purchase) || !Number.isFinite(qty) ||
+     purchase < 0 || qty < 0){
+    alert('Invalid Date, Purchase Amount or Return Quantity.');
+    return;
+  }
+
+  if(!confirm('Save these Damage changes?')) return;
+  showBusy('Modifying Damage entry...');
+
+  const {data,error} = await supabaseClient
+    .from('damage_book')
+    .update({
+      entry_date:date,
+      item_code:code.trim(),
+      item_name:m.name,
+      purchase_amount:purchase,
+      return_quantity:qty
+    })
+    .eq('id',id)
+    .select()
+    .single();
+
+  if(error){
+    handleDbError('Damage modify failed',error);
+    return;
+  }
+
+  Object.assign(e,{
+    date:data.entry_date,
+    code:data.item_code,
+    name:data.item_name,
+    purchase:Number(data.purchase_amount),
+    qty:Number(data.return_quantity),
+    amount:Number(data.damage_amount)
+  });
+
+  renderDamageSaved();
+  viewDamage();
+  setDbStatus('Damage entry modified ✓',true);
+}
+
+async function deleteDamage(id){
+  if(!confirm('Delete this Damage entry?')) return;
+  if(!DB_READY){alert('Supabase is not ready.');return;}
+
+  showBusy('Deleting Damage entry...');
+  const {error}=await supabaseClient.from('damage_book').delete().eq('id',id);
+
+  if(error){
+    handleDbError('Damage delete failed',error);
+    return;
+  }
+
+  DB.damage=DB.damage.filter(x=>String(x.id)!==String(id));
+  renderDamageSaved();
+  viewDamage();
+  setDbStatus('Damage entry deleted ✓',true);
+}
+
+function viewDamage(){
+  const f=$('damageFrom').value,t=$('damageTo').value;
+  if(!f||!t)return;
+
+  if(f>t){
+    alert('From Date cannot be after To Date.');
+    return;
+  }
+
+  const l=DB.damage
+    .filter(e=>e.date>=f&&e.date<=t)
+    .sort((a,b)=>a.date.localeCompare(b.date)||Number(a.id)-Number(b.id));
+
+  let total=0;
+  const rows=l.map(e=>{
+    total+=Number(e.amount);
+    return `<tr>
+      <td>${esc(e.date)}</td><td>${esc(e.code)}</td><td>${esc(e.name)}</td>
+      <td class="num">${money(e.purchase)}</td>
+      <td class="num">${money(e.qty)}</td>
+      <td class="num">${money(e.amount)}</td>
+    </tr>`;
+  }).join('');
+
+  $('damageBookBody').innerHTML=rows ||
+    '<tr><td colspan="6">No Damage entries for selected dates.</td></tr>';
+
+  $('damageGrand').textContent=money(total);
+  $('damagePrintBody').innerHTML=rows ||
+    '<tr><td colspan="6">No Damage entries for selected dates.</td></tr>';
+  $('damagePrintTotal').textContent=money(total);
+  $('damagePrintRange').textContent='From '+f+' To '+t;
+  $('damagePrintArea').style.display='block';
+}
+
+function todayDamage(){
+  const d=today();
+  $('damageFrom').value=d;
+  $('damageTo').value=d;
+  viewDamage();
+}
+
+function printDamage(){
+  if(!isMainUser()){alert('Sub User does not have access to Damage Book print.');return;}
+  if(!isMainUser()) { alert('Sub User does not have access to this report.'); return; }
+  viewDamage();
+  $('damage').classList.add('printing');
+  window.print();
+  setTimeout(()=>$('damage').classList.remove('printing'),100);
+}
+
+
+// ---------- User Role Control (v8.20 password login) ----------
+let CURRENT_USER_ROLE = '';
+
+function isMainUser(){
+  return CURRENT_USER_ROLE === 'main';
+}
+
+async function loginWithPassword(event){
+  if(event) event.preventDefault();
+  const input=document.getElementById('loginPassword');
+  const msg=document.getElementById('loginMsg');
+  const password=(input?.value||'');
+  if(!password){ if(msg) msg.textContent='Enter your password.'; return; }
+  if(!DB_READY || !supabaseClient){
+    if(msg) msg.textContent='Supabase is not ready.';
+    return;
+  }
+
+  if(msg) msg.textContent='Checking...';
+  try{
+    const {data,error}=await supabaseClient.rpc('check_app_password',{password:password});
+    if(error) throw error;
+    const role = Array.isArray(data) ? data[0]?.role : data?.role;
+    if(role !== 'main' && role !== 'sub'){
+      if(msg) msg.textContent='Incorrect password.';
+      if(input){ input.value=''; input.focus(); }
+      return;
+    }
+    CURRENT_USER_ROLE=role;
+    const login=document.getElementById('roleLogin');
+    const appBar=document.getElementById('appBar');
+    const roleText=document.getElementById('currentRole');
+    if(login) login.style.display='none';
+    if(appBar) appBar.style.display='flex';
+    if(roleText) roleText.textContent = isMainUser() ? 'Main User' : 'Sub User';
+    if(input) input.value='';
+    if(msg) msg.textContent='';
+    applyRolePermissions();
+    const wanted=isMainUser() ? 'ledger' : 'income';
+    const tab=document.querySelector(`.tab[onclick*="showTab('${wanted}'"]`);
+    if(tab) showTab(wanted,tab);
+    applyRolePermissions();
+  }catch(e){
+    console.error('Login error:',e);
+    if(msg) msg.textContent='Login failed: ' + (e?.message || e?.details || 'Supabase error');
+  }
+}
+
+function loginAs(role){
+  // Backward-compatible guard: role cannot be selected without the Supabase password.
+  const input=document.getElementById('loginPassword');
+  if(input){ input.focus(); }
+}
+
+function logoutUser(){
+  CURRENT_USER_ROLE='';
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active','printing'));
+  const login=document.getElementById('roleLogin');
+  const appBar=document.getElementById('appBar');
+  const input=document.getElementById('loginPassword');
+  const msg=document.getElementById('loginMsg');
+  if(appBar) appBar.style.display='none';
+  if(login) login.style.display='flex';
+  if(input){ input.value=''; input.focus(); }
+  if(msg) msg.textContent='';
+}
+
+function hideEl(id, hide){
+  const el=document.getElementById(id);
+  if(el) el.style.display=hide ? 'none' : '';
+}
+
+
+function applySubAttendanceView(){
+  const card=document.getElementById('attendanceStaffCard');
+  if(!card) return;
+  if(isMainUser()) return;
+  card.style.display='none';
+}
+
+function applyRolePermissions(){
+  const sub = !isMainUser();
+
+  // Sub User: View Day Book tab must NOT be displayed.
+  const ledgerTab = document.querySelector('.tab[onclick*="showTab(\'ledger\'"]');
+  if(ledgerTab) ledgerTab.style.display = sub ? 'none' : '';
+
+  // Sub User -> Petty Cash: ONLY Add Petty Cash Expenses + Saved Petty Cash Expenses.
+  hideEl('pettyAddCard', sub);       // hides Petty Cash Book controls for Sub User
+  hideEl('pettyEntryCard', false);  // Add Petty Cash Expenses
+  hideEl('pettySavedCard', false);  // Saved Petty Cash Expenses
+  hideEl('pettyTotalsCard', sub);    // Type-wise total
+  hideEl('pettyPrintArea', sub);     // Petty Cash Book itself is hidden for Sub User
+
+  // Sub User -> Damage: ONLY one VLOOKUP section + Add Damage + Saved Damage Entries.
+  // Sub User: Damage Book/report must NOT be shown. Keep VLOOKUP + Add Damage + Saved Entries.
+  hideEl('damageAddCard', false);    // keep VLOOKUP button visible
+  hideEl('damageEntryCard', false);  // Add Damage
+  hideEl('damageMaster', true);      // VLOOKUP opens only from the button
+  hideEl('damageSavedCard', false);   // Saved Damage Entries
+  hideEl('damageReportCard', sub);   // Damage Book/report hidden for Sub User
+  hideEl('damagePrintArea', sub);    // Damage Book print area hidden for Sub User
+  if(sub){
+    const damageBookTitle=document.querySelector('#damageAddCard h2');
+    if(damageBookTitle) damageBookTitle.textContent='Damage';
+  }
+  const damageRange=document.querySelector('#damageAddCard .grid');
+  const damageActions=document.querySelector('#damageAddCard .actions');
+  if(sub){
+    if(damageRange) damageRange.style.display='none';
+    if(damageActions){
+      const btns=damageActions.querySelectorAll('button');
+      btns.forEach((b,i)=>{ b.style.display = (i===3) ? 'none' : 'none'; });
+    }
+    // Sub User opens VLOOKUP only by pressing the single VLOOKUP button.
+    const damageMasterCard=document.getElementById('damageMaster');
+    if(damageMasterCard) damageMasterCard.style.display='none';
+  } else {
+    if(damageRange) damageRange.style.display='';
+    if(damageActions){
+      damageActions.querySelectorAll('button').forEach(b=>b.style.display='');
+    }
+  }
+
+  // Sub User -> Attendance: Staff Attendance + Attendance Book only.
+  // Staff management / salary management card is hidden.
+  hideEl('attendanceStaffCard', sub);
+
+  // No salary totals/details in Attendance Book.
+  const salaryLabels=document.querySelectorAll('#attendanceStaffCard label');
+  salaryLabels.forEach(l=>{
+    if((l.textContent||'').toLowerCase().includes('per hour salary')){
+      l.style.display=sub?'none':'';
+    }
+  });
+
+  // Re-apply the 15-minute state to saved-row buttons.
+  if(typeof renderIncome==='function') renderIncome();
+  if(typeof renderPettySaved==='function') renderPettySaved();
+  if(typeof renderDamageSaved==='function') renderDamageSaved();
+  if(typeof renderDamageMaster==='function') renderDamageMaster();
+  if(typeof renderAttendanceReport==='function') renderAttendanceReport();
+}
+
+
+// ---------- Start ----------
+
+// ===== Supabase Staff Attendance =====
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+async function loadAttendanceData(){
+  if(!DB_READY || !supabaseClient){ return; }
+  try{
+    const [staffRes, attRes] = await Promise.all([
+      supabaseClient.from('staff').select('*').order('name'),
+      supabaseClient.from('attendance').select('*, staff:staff_id(id,name)').order('work_date',{ascending:false})
+    ]);
+    if(staffRes.error) throw staffRes.error;
+    if(attRes.error) throw attRes.error;
+    DB.staff = staffRes.data || [];
+    DB.attendance = (attRes.data || []).map(a => ({
+      ...a,
+      staff_name: a.staff?.name || a.staff_name || ''
+    }));
+    populateStaffSelects();
+    renderStaff();
+    renderAttendanceReport();
+  }catch(e){
+    console.error(e);
+    const m=document.getElementById('attMsg');
+    if(m) m.textContent='Supabase Attendance load error: '+e.message;
+  }
+}
+
+function initAttendanceUI(){
+  const d=document.getElementById('attDate');
+  const m=document.getElementById('attMonth');
+  if(d && !d.value) d.value=new Date().toISOString().slice(0,10);
+  if(m && !m.value) m.value=new Date().toISOString().slice(0,7);
+  populateStaffSelects();
+}
+
+function populateStaffSelects(){
+  const s=document.getElementById('attStaff');
+  const r=document.getElementById('reportStaff');
+  if(!s || !r) return;
+  const currentS=s.value, currentR=r.value;
+  s.innerHTML='<option value="">Select Staff</option>'+DB.staff.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
+  r.innerHTML='<option value="">All Staff</option>'+DB.staff.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
+  if(currentS) s.value=currentS;
+  if(currentR) r.value=currentR;
+}
+
+
+function renderStaff(){
+  const body=document.getElementById('staffBody');
+  if(!body) return;
+  body.innerHTML=DB.staff.length ? DB.staff.map(s=>`
+    <tr>
+      <td>${escapeHtml(s.name)}</td>
+      <td>${money(s.hourly_salary)}</td>
+      <td>-</td>
+    </tr>`).join('') :
+    '<tr><td colspan="3">No staff added.</td></tr>';
+}
+
+async function addStaff(){
+  if(!isMainUser()){ alert('Only Main User can manage Staff.'); return; }
+  if(!DB_READY || !supabaseClient){ return alert('Supabase is not ready.'); }
+  const input=document.getElementById('newStaffName');
+  const hourly=Number(document.getElementById('newHourlySalary')?.value||0);
+  const name=(input?.value||'').trim();
+  if(!name) return alert('Enter staff name.');
+  if(hourly<0) return alert('Salary cannot be negative.');
+
+  const {data,error}=await supabaseClient.from('staff')
+    .insert({name,hourly_salary:hourly}).select().single();
+
+  if(error){
+    if(error.code==='23505') return alert('Staff name already exists.');
+    return alert('Could not add staff: '+error.message);
+  }
+
+  DB.staff.push(data);
+  DB.staff.sort((a,b)=>a.name.localeCompare(b.name));
+  input.value='';
+  document.getElementById('newHourlySalary').value='';
+  populateStaffSelects();
+  renderStaff();
+}
+
+async function deleteStaff(id){
+  if(!isMainUser()){ alert('Only Main User can manage Staff.'); return; }
+  if(!DB_READY || !supabaseClient){ return alert('Supabase is not ready.'); }
+  if(!confirm('Delete this staff? Attendance records may also be removed.')) return;
+  const {error}=await supabaseClient.from('staff').delete().eq('id',id);
+  if(error) return alert('Could not delete staff: '+error.message);
+  DB.staff=DB.staff.filter(s=>s.id!==id);
+  DB.attendance=DB.attendance.filter(a=>a.staff_id!==id);
+  populateStaffSelects(); renderStaff(); renderAttendanceReport();
+}
+
+function clearAttendanceForm(){
+  document.getElementById('attStaff').value='';
+  document.getElementById('attIn').value='';
+  document.getElementById('attOut').value='';
+  const m=document.getElementById('attMsg'); if(m)m.textContent='';
+}
+
+function calcWorkingMinutes(inTime,outTime){
+  if(!inTime || !outTime) return null;
+  let [ih,im]=inTime.split(':').map(Number), [oh,om]=outTime.split(':').map(Number);
+  let a=ih*60+im, b=oh*60+om;
+  if(b<a) b+=1440;
+  return b-a;
+}
+function fmtMinutes(min){
+  if(min==null) return '-';
+  return `${Math.floor(min/60)}h ${min%60}m`;
+}
+
+async function saveAttendance(){
+  if(!DB_READY || !supabaseClient){ return alert('Supabase is not ready.'); }
+  const date=document.getElementById('attDate').value;
+  const staff_id=document.getElementById('attStaff').value;
+  const work_in=document.getElementById('attIn').value;
+  const work_out=document.getElementById('attOut').value;
+  if(!date || !staff_id || !work_in || !work_out) return alert('Date, Staff, Work In and Work Out are required.');
+  const payload={work_date:date,staff_id,work_in,work_out};
+  const {data,error}=await supabaseClient.from('attendance')
+    .upsert(payload,{onConflict:'work_date,staff_id'}).select('*, staff:staff_id(id,name)').single();
+  if(error) return alert('Could not save attendance: '+error.message);
+  const item={...data,staff_name:data.staff?.name||''};
+  const idx=DB.attendance.findIndex(a=>a.work_date===date && a.staff_id===staff_id);
+  if(idx>=0) DB.attendance[idx]=item; else DB.attendance.push(item);
+  renderAttendanceReport();
+  const m=document.getElementById('attMsg'); if(m)m.textContent='Attendance saved to Supabase.';
+}
+
+function renderAttendanceReport(){
+  const body=document.getElementById('attendanceReportBody');
+  if(!body) return;
+  const month=document.getElementById('attMonth')?.value || new Date().toISOString().slice(0,7);
+  const staff=document.getElementById('reportStaff')?.value || '';
+  const rows=DB.attendance.filter(a=>a.work_date?.slice(0,7)===month && (!staff || a.staff_id===staff))
+    .sort((a,b)=>a.work_date.localeCompare(b.work_date));
+
+  body.innerHTML=rows.length ? rows.map(a=>{
+    const st=DB.staff.find(s=>s.id===a.staff_id);
+    const ok=isMainUser() || isWithin15Minutes(a.created_at);
+    const changeText=isMainUser() ? 'Change' : 'Change (15m)';
+    return `<tr>
+      <td>${esc(a.work_date)}</td>
+      <td>${escapeHtml(a.staff_name||st?.name||'')}</td>
+      <td>${esc(a.work_in||'-')}</td>
+      <td>${esc(a.work_out||'-')}</td>
+      <td>${ok ? `<button class="secondary" onclick="editAttendance('${a.id}')">${changeText}</button>` : `<button class="secondary action-locked" disabled>${changeText}</button>`}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5">No attendance for selected month.</td></tr>';
+
+  const sum=document.getElementById('attendanceSummary');
+  // Intentionally do not show total salary, hourly salary, or total staff salary here.
+  if(sum) sum.innerHTML=`<div class="stat"><b>${rows.length}</b><span>Attendance Entries</span></div>`;
+}
+
+async function editAttendance(id){
+  const a=DB.attendance.find(x=>String(x.id)===String(id));
+  if(!a) return;
+  if(!isMainUser() && !isWithin15Minutes(a.created_at)){ alert('Change time expired. Sub User can change only within 15 minutes.'); renderAttendanceReport(); return; }
+  const work_in=prompt('Work In (HH:MM):',a.work_in||'');
+  if(work_in===null) return;
+  const work_out=prompt('Work Out (HH:MM):',a.work_out||'');
+  if(work_out===null) return;
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(work_in)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(work_out)){ alert('Invalid time.'); return; }
+  if(!confirm('Save attendance change?')) return;
+  const {data,error}=await supabaseClient.from('attendance').update({work_in,work_out}).eq('id',id).select('*, staff:staff_id(id,name)').single();
+  if(error){ alert('Could not modify attendance: '+error.message); return; }
+  const item={...data,staff_name:data.staff?.name||''};
+  const idx=DB.attendance.findIndex(x=>String(x.id)===String(id));
+  if(idx>=0) DB.attendance[idx]=item;
+  renderAttendanceReport();
+}
+
+function viewAttendanceReport(){ renderAttendanceReport(); }
+
+function printAttendance(){
+  const sec=document.getElementById('attendance');
+  if(!sec) return;
+
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('printing'));
+
+  // Refresh the report first, then print the live section.
+  renderAttendanceReport();
+  sec.classList.add('printing');
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.print();
+      setTimeout(() => sec.classList.remove('printing'), 300);
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // Login is password-based. Role is returned by Supabase from the password.
+  document.querySelector('.wrap')?.setAttribute('aria-hidden','true');
+  const d=today();
+
+  $('fromDate').value=d;
+  $('toDate').value=d;
+  $('pettyFrom').value=d;
+  $('pettyTo').value=d;
+  $('damageFrom').value=d;
+  $('damageTo').value=d;
+
+  addIncomeRow();
+  addPettyRow();
+  addDamageRow();
+
+  const ok=await initSupabase();
+
+  if(ok){
+    await loadAll();
+    renderIncome();
+    renderFinal();
+    renderPettySaved();
+    renderPettyTotals();
+    renderDamageSaved();
+    renderDamageMaster();
+    viewLedger();
+
+    await loadAttendanceData();
+    initAttendanceUI();
+    renderStaff();
+    renderAttendanceReport();
+    viewPetty();
+    viewDamage();
+  }else{
+    setDbStatus('Supabase not ready — data actions are disabled until the database is available.');
+    updateOpening();
+    renderIncome();
+    renderFinal();
+    renderPettySaved();
+    renderPettyTotals();
+    renderDamageSaved();
+    renderDamageMaster();
+  }
+});
+</script>
+</body>
+</html>

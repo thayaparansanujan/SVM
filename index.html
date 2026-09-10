@@ -269,7 +269,7 @@ label{font-size:12px;font-weight:700;display:block;margin-bottom:5px}input,selec
       <div id="attendanceSummary" class="stats"></div>
       <div class="table-wrap">
         <table id="attendanceReportTable">
-          <thead><tr><th>Date</th><th>Staff Name</th><th>Work In</th><th>Work Out</th><th>Change</th></tr></thead>
+          <thead><tr><th>Date</th><th>Staff Name</th><th>Work In</th><th>Work Out</th><th>Working Hours</th><th>Per Hour Salary</th><th>Salary</th><th>Change</th></tr></thead>
           <tbody id="attendanceReportBody"></tbody>
         </table>
       </div>
@@ -1523,6 +1523,14 @@ function isMainUser(){
   return CURRENT_USER_ROLE === 'main';
 }
 
+// Day Book: toggle the complete details panel for one entry.
+function details(id, btn){
+  const box=document.getElementById('d'+id);
+  if(!box) return;
+  const open=box.classList.toggle('show');
+  if(btn) btn.textContent=open ? 'Hide Full Details' : 'View Full Details';
+}
+
 async function loginWithPassword(event){
   if(event) event.preventDefault();
   const input=document.getElementById('loginPassword');
@@ -1802,25 +1810,43 @@ function renderAttendanceReport(){
   const staff=document.getElementById('reportStaff')?.value || '';
   const rows=DB.attendance.filter(a=>a.work_date?.slice(0,7)===month && (!staff || a.staff_id===staff))
     .sort((a,b)=>a.work_date.localeCompare(b.work_date));
+  const main=isMainUser();
 
   body.innerHTML=rows.length ? rows.map(a=>{
     const st=DB.staff.find(s=>s.id===a.staff_id);
-    const ok=isMainUser() || isWithin15Minutes(a.created_at);
-    const changeText=isMainUser() ? 'Change' : 'Change (15m)';
+    const ok=main || isWithin15Minutes(a.created_at);
+    const changeText=main ? 'Change' : 'Change (15m)';
+    const mins=calcWorkingMinutes(a.work_in,a.work_out);
+    const hourly=Number(st?.hourly_salary||0);
+    const salary=mins==null ? 0 : (mins/60)*hourly;
     return `<tr>
       <td>${esc(a.work_date)}</td>
       <td>${escapeHtml(a.staff_name||st?.name||'')}</td>
       <td>${esc(a.work_in||'-')}</td>
       <td>${esc(a.work_out||'-')}</td>
+      ${main ? `<td>${fmtMinutes(mins)}</td><td>${money(hourly)}</td><td>${money(salary)}</td>` : ''}
       <td>${ok ? `<button class="secondary" onclick="editAttendance('${a.id}')">${changeText}</button>` : `<button class="secondary action-locked" disabled>${changeText}</button>`}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="5">No attendance for selected month.</td></tr>';
+  }).join('') : `<tr><td colspan="${main?8:5}">No attendance for selected month.</td></tr>`;
 
   const sum=document.getElementById('attendanceSummary');
-  // Intentionally do not show total salary, hourly salary, or total staff salary here.
-  if(sum) sum.innerHTML=`<div class="stat"><b>${rows.length}</b><span>Attendance Entries</span></div>`;
+  if(sum){
+    const totalMinutes=rows.reduce((t,a)=>t+(calcWorkingMinutes(a.work_in,a.work_out)||0),0);
+    const totalSalary=rows.reduce((t,a)=>{
+      const st=DB.staff.find(s=>s.id===a.staff_id);
+      const mins=calcWorkingMinutes(a.work_in,a.work_out)||0;
+      return t+(mins/60)*Number(st?.hourly_salary||0);
+    },0);
+    if(main){
+      sum.innerHTML=`
+        <div class="stat"><b>${rows.length}</b><span>Attendance Entries</span></div>
+        <div class="stat"><b>${fmtMinutes(totalMinutes)}</b><span>Total Working Hours</span></div>
+        <div class="stat"><b>${money(totalSalary)}</b><span>Total Salary</span></div>`;
+    }else{
+      sum.innerHTML=`<div class="stat"><b>${rows.length}</b><span>Attendance Entries</span></div>`;
+    }
+  }
 }
-
 async function editAttendance(id){
   const a=DB.attendance.find(x=>String(x.id)===String(id));
   if(!a) return;

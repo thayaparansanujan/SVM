@@ -144,12 +144,12 @@ label{font-size:12px;font-weight:700;display:block;margin-bottom:5px}input,selec
 <div id="ledgerPrintArea" class="card print-area">
 <h3>Day Book Ledger</h3>
 <div class="tablewrap"><table>
-<thead><tr><th>Date</th><th>Particulars / Description</th><th class="num">Income</th><th class="num">Expenses</th><th class="num">Balance</th><th class="no-print">Details</th></tr></thead>
+<thead><tr><th>Date</th><th>Particulars / Description</th><th class="num">வரவு</th><th class="num">செலவு</th><th class="num">Balance</th><th class="no-print">Details</th></tr></thead>
 <tbody id="ledgerBody"></tbody>
 </table></div>
 <div class="summary">
-<div class="stat">Opening Balance<b id="sumOpening">0.00</b></div><div class="stat">Total Income<b id="sumIncome">0.00</b></div>
-<div class="stat">Total Expenses<b id="sumExpense">0.00</b></div><div class="stat">Final Balance<b id="sumFinal">0.00</b></div>
+<div class="stat">Opening Balance<b id="sumOpening">0.00</b></div><div class="stat">மொத்த வரவு<b id="sumIncome">0.00</b></div>
+<div class="stat">மொத்த செலவு<b id="sumExpense">0.00</b></div><div class="stat">Final Balance<b id="sumFinal">0.00</b></div>
 </div></div>
 
 <div class="card opening-card no-print"><h3>One-Time Opening Balance</h3>
@@ -165,11 +165,11 @@ label{font-size:12px;font-weight:700;display:block;margin-bottom:5px}input,selec
 <div class="actions"><button onclick="addIncomeRow()">+ Add Row</button><button onclick="saveIncome()">Save All</button></div></div>
 
 <div id="incomeSavedCard" class="card no-print"><h3>Saved Entries</h3><div class="tablewrap"><table>
-<thead><tr><th>Type</th><th>Type 2</th><th>Date</th><th>Description</th><th class="num">Amount</th><th>Action</th></tr></thead>
+<thead><tr><th>Type</th><th>Date</th><th>Description</th><th class="num">Amount</th><th>Action</th></tr></thead>
 <tbody id="savedBody"></tbody></table></div></div>
 
 <div id="incomeFinalCard" class="card no-print"><h3>Day Book Final Balance</h3><div class="summary">
-<div class="stat">Opening Balance<b id="entryOpening">0.00</b></div><div class="stat">Total Income<b id="entryIncome">0.00</b></div><div class="stat">Total Expenses<b id="entryExpense">0.00</b></div><div class="stat">Final Balance<b id="entryFinal">0.00</b></div>
+<div class="stat">Opening Balance<b id="entryOpening">0.00</b></div><div class="stat">மொத்த வரவு<b id="entryIncome">0.00</b></div><div class="stat">மொத்த செலவு<b id="entryExpense">0.00</b></div><div class="stat">Final Balance<b id="entryFinal">0.00</b></div>
 </div></div>
 </section>
 
@@ -377,7 +377,7 @@ async function loadAll(){
   }
 
   DB.entries = (results[0].data || []).map(e => ({
-    id:e.id, type:e.entry_type, subtype:e.entry_subtype,
+    id:e.id, type:e.entry_type,
     date:e.entry_date, description:e.description || '', amount:Number(e.amount), created_at:e.created_at
   }));
 
@@ -551,7 +551,7 @@ function viewLedger(){
           <div id="d${e.id}" class="full-details">
             <div class="detail-grid">
               <div class="detail-item"><span>Type</span><b>${esc(e.type)}</b></div>
-              <div class="detail-item"><span>Type 2</span><b>${esc(e.subtype)}</b></div>
+              
               <div class="detail-item"><span>Date</span><b>${esc(e.date)}</b></div>
               <div class="detail-item"><span>Description</span><b>${esc(e.description || '')}</b></div>
               <div class="detail-item"><span>Amount</span><b>${money(e.amount)}</b></div>
@@ -609,22 +609,17 @@ function printDayBook(){
 }
 
 // ---------- Income & Expenses ----------
-function subOptions(t){
-  return t==='Income'
-    ? ['Sales','Excess','Others']
-    : ['Purchase','POS','Deposit','Others'];
+function typeLabel(t){
+  return t === 'Income' ? 'வரவு' : 'செலவு';
 }
 
 function addIncomeRow(data={}){
-  // New rows automatically carry forward Type, Type 2 and Date
-  // from the immediately previous row unless explicit data is supplied.
   const prevRows = document.querySelectorAll('#entryRows .entry-row');
   const prev = prevRows.length ? prevRows[prevRows.length - 1] : null;
 
   if(prev && Object.keys(data).length === 0){
     data = {
       type: prev.querySelector('.rtype')?.value || 'Income',
-      subtype: prev.querySelector('.rsub')?.value || 'Sales',
       date: prev.querySelector('.rdate')?.value || today(),
       description: '',
       amount: ''
@@ -634,8 +629,10 @@ function addIncomeRow(data={}){
   const r=document.createElement('div');
   r.className='entry-row';
   r.innerHTML=`<div><label>Type</label>
-    <select class="rtype"><option>Income</option><option>Expenses</option></select></div>
-    <div><label>Type 2</label><select class="rsub"></select></div>
+    <select class="rtype">
+      <option value="Income">வரவு</option>
+      <option value="Expenses">செலவு</option>
+    </select></div>
     <div><label>Date</label><input class="rdate" type="date"></div>
     <div class="wide"><label>Description</label><input class="rdesc"></div>
     <div><label>Amount</label><input class="ramt" type="number" step="0.01"></div>
@@ -644,19 +641,11 @@ function addIncomeRow(data={}){
   $('entryRows').appendChild(r);
 
   const type=r.querySelector('.rtype');
-  const sub=r.querySelector('.rsub');
-
   type.value=data.type||'Income';
-  sub.innerHTML=subOptions(type.value).map(x=>`<option>${x}</option>`).join('');
-  sub.value=data.subtype||sub.options[0].value;
 
   r.querySelector('.rdate').value=data.date||today();
   r.querySelector('.rdesc').value=data.description||'';
   r.querySelector('.ramt').value=data.amount??'';
-
-  type.onchange=()=>{
-    sub.innerHTML=subOptions(type.value).map(x=>`<option>${x}</option>`).join('');
-  };
 
   const d=r.querySelector('.rdate'), x=r.querySelector('.rdesc'), a=r.querySelector('.ramt');
   d.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();x.focus()}};
@@ -681,7 +670,6 @@ async function saveIncome(){
   for(const r of rows){
     const date=r.querySelector('.rdate').value;
     const type=r.querySelector('.rtype').value;
-    const subtype=r.querySelector('.rsub').value;
     const description=r.querySelector('.rdesc').value.trim();
     const amount=Number(r.querySelector('.ramt').value);
 
@@ -693,7 +681,6 @@ async function saveIncome(){
     add.push({
       entry_date:date,
       entry_type:type,
-      entry_subtype:subtype,
       description,
       amount
     });
@@ -717,7 +704,7 @@ async function saveIncome(){
 
   (data||[]).forEach(e=>{
     DB.entries.push({
-      id:e.id,type:e.entry_type,subtype:e.entry_subtype,
+      id:e.id,type:e.entry_type,
       date:e.entry_date,description:e.description||'',amount:Number(e.amount),created_at:e.created_at
     });
   });
@@ -729,6 +716,90 @@ async function saveIncome(){
   viewLedger();
   setDbStatus('Income & Expenses saved ✓',true);
   alert(add.length+' record(s) saved to Supabase.');
+}
+
+function renderIncome(){
+  const l=[...DB.entries].sort((a,b)=>
+    b.date.localeCompare(a.date)||Number(b.id)-Number(a.id));
+
+  $('savedBody').innerHTML=l.length ? l.map(e=>`<tr>
+    <td>${esc(typeLabel(e.type))}</td>
+    <td>${esc(e.date)}</td>
+    <td>${esc(e.description||'')}</td>
+    <td class="num">${money(e.amount)}</td>
+    <td>
+      ${actionButton('Modify','editIncome',e,'secondary')}
+      ${actionButton('Delete','delIncome',e,'danger')}
+    </td>
+  </tr>`).join('') :
+  '<tr><td colspan="5">No saved entries.</td></tr>';
+}
+
+async function editIncome(id){
+  if(!isMainUser() && !isWithin15Minutes(DB.entries.find(x=>String(x.id)===String(id))?.created_at)){
+    alert('Only within 15 minutes is allowed for Sub User.');
+    renderIncome();
+    return;
+  }
+
+  const e = DB.entries.find(x => String(x.id) === String(id));
+  if(!e) return;
+
+  const type = prompt('Type: வரவு / செலவு', typeLabel(e.type));
+  if(type === null) return;
+
+  let dbType;
+  if(type === 'வரவு' || type === 'Income') dbType='Income';
+  else if(type === 'செலவு' || type === 'Expenses') dbType='Expenses';
+  else{
+    alert('Type must be வரவு or செலவு.');
+    return;
+  }
+
+  const date = prompt('Date (YYYY-MM-DD):', e.date);
+  if(date === null) return;
+  const description = prompt('Description:', e.description || '');
+  if(description === null) return;
+  const amountText = prompt('Amount:', String(e.amount));
+  if(amountText === null) return;
+  const amount = Number(amountText);
+
+  if(!date || !Number.isFinite(amount) || amount < 0){
+    alert('Invalid Date or Amount.');
+    return;
+  }
+
+  if(!confirm('Save these changes?')) return;
+  showBusy('Modifying Income & Expenses...');
+
+  const {data,error} = await supabaseClient
+    .from('income_expenses')
+    .update({
+      entry_date: date,
+      entry_type: dbType,
+      description: description.trim(),
+      amount
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if(error){
+    handleDbError('Modify failed', error);
+    return;
+  }
+
+  Object.assign(e, {
+    type:data.entry_type,
+    date:data.entry_date,
+    description:data.description || '',
+    amount:Number(data.amount)
+  });
+
+  renderIncome();
+  renderFinal();
+  viewLedger();
+  setDbStatus('Income & Expenses modified ✓', true);
 }
 
 function isWithin15Minutes(createdAt){
@@ -1794,11 +1865,10 @@ async function saveAttendance(){
   if(!date || !staff_id || !work_in || !work_out) return alert('Date, Staff, Work In and Work Out are required.');
   const payload={work_date:date,staff_id,work_in,work_out};
   const {data,error}=await supabaseClient.from('attendance')
-    .upsert(payload,{onConflict:'work_date,staff_id'}).select('*, staff:staff_id(id,name)').single();
+    .insert(payload).select('*, staff:staff_id(id,name)').single();
   if(error) return alert('Could not save attendance: '+error.message);
   const item={...data,staff_name:data.staff?.name||''};
-  const idx=DB.attendance.findIndex(a=>a.work_date===date && a.staff_id===staff_id);
-  if(idx>=0) DB.attendance[idx]=item; else DB.attendance.push(item);
+  DB.attendance.push(item);
   renderAttendanceReport();
   const m=document.getElementById('attMsg'); if(m)m.textContent='Attendance saved to Supabase.';
 }
@@ -1809,7 +1879,7 @@ function renderAttendanceReport(){
   const month=document.getElementById('attMonth')?.value || new Date().toISOString().slice(0,7);
   const staff=document.getElementById('reportStaff')?.value || '';
   const rows=DB.attendance.filter(a=>a.work_date?.slice(0,7)===month && (!staff || a.staff_id===staff))
-    .sort((a,b)=>a.work_date.localeCompare(b.work_date));
+    .sort((a,b)=>a.work_date.localeCompare(b.work_date) || String(a.work_in||'').localeCompare(String(b.work_in||'')));
   const main=isMainUser();
 
   body.innerHTML=rows.length ? rows.map(a=>{
